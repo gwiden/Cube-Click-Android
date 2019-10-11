@@ -1,0 +1,260 @@
+*[GameCntrl.cs]------------------------------------------------------------------------------------------------------------------------*
+using UnityEngine;
+using UnityEngine.UI;
+using System.Collections;
+using System.Collections.Generic;
+
+public class GameCntrl : MonoBehaviour
+{
+    public GameObject colBlock;
+    public Vector3[] positions;
+    private GameObject block;
+    public GameObject[] blocks = new GameObject[16];
+
+    private int rand;
+    public int count;
+    public Text score;
+    
+
+    [HideInInspector]
+    public bool next, lose;
+
+
+    void Start()
+    {
+        count = 0;
+        next = false;
+        lose = false;
+        rand = Random.Range(0, positions.Length);
+        for (int i = 0; i < positions.Length; i++)
+        {
+            blocks[i] = Instantiate(colBlock, positions[i], Quaternion.identity) as GameObject;
+            if (GetComponent<RandNum>().Num == i)
+                block = blocks[i-1];
+        }
+        block.GetComponent<RandNum>().right = true;
+
+    }
+
+
+    internal void nextNums()
+    {
+        block.GetComponent<RandNum>().right = false;
+        GetComponent<AudioSource> ().Play ();
+        count++;
+        score.text = "score" + "\n" + count;
+        GetComponent<RandNum>().Num = Random.Range(1, 16);
+        GetComponent<RandNum>().RanNum.text = GetComponent<RandNum>().Num.ToString();
+        Next();
+    }
+
+    void Next()
+    {
+        for(int i = 0; i < positions.Length; i++)
+        {
+            if (GetComponent<RandNum>().Num == i)
+            {
+                block = blocks[i - 1];
+                block.GetComponent<RandNum>().right = true;
+            }
+        }
+    }
+
+    internal void playerLose()
+    {
+        if (PlayerPrefs.GetInt("Score") < count)
+            PlayerPrefs.SetInt("Score", count);
+        Application.LoadLevel("lose");
+    }
+}
+*[RandNum.cs]--------------------------------------------------------------------------------------------------------------------------*
+using UnityEngine;
+using UnityEngine.UI;
+
+public class RandNum : MonoBehaviour
+{
+    public Text RanNum;
+    public bool main = false, right = false;
+    public int Num;
+
+    private void Awake()
+    {
+        if (main)
+        {
+            Num = Random.Range(1, 16);
+            RanNum.text = Num.ToString();
+            Screen.SetResolution(720, 1280, false);
+        }
+        
+    }
+}
+*[RightOne.cs]-------------------------------------------------------------------------------------------------------------------------*
+using UnityEngine;
+
+public class RightOne : MonoBehaviour
+{
+
+    private GameObject mainCube;
+
+    void Start()
+    {
+        mainCube = GameObject.Find("Main Cube");
+    }
+
+    void OnMouseDown()
+    {
+        if (this.GetComponent<RandNum>().right)
+        {
+            mainCube.GetComponent<GameCntrl>().lose = false;
+            mainCube.GetComponent<GameCntrl>().next = true;
+            mainCube.GetComponent<GameCntrl>().nextNums();
+        }
+        else
+        {
+            mainCube.GetComponent<GameCntrl>().next = false;
+            mainCube.GetComponent<GameCntrl>().playerLose();
+        }
+    }
+}
+*[CubeRotate.cs]-----------------------------------------------------------------------------------------------------------------------*
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class CubeRotate : MonoBehaviour {
+
+    public float tilt;
+    private Vector3 target = new Vector3 (0, 3.7f, 0);
+
+    private void Update ()
+    {
+        transform.Rotate(Vector3.up * tilt);
+    }
+}
+*[Time.cs]-----------------------------------------------------------------------------------------------------------------------------*
+using UnityEngine;
+using System.Collections;
+
+public class Timer : MonoBehaviour
+{
+
+    public Color col, defCol;
+    public GameObject mCube;
+    private int lastNum;
+    
+    private void Start()
+    {
+        lastNum = mCube.GetComponent<RandNum>().Num;
+    }
+
+    private void Update()
+    {
+
+        float n = mCube.GetComponent<GameCntrl>().count * 0.002f;
+
+        if (!mCube.GetComponent<GameCntrl>().lose)
+        {
+            if (transform.position.x < -8.5f)
+                Destroy(gameObject);
+            if (transform.position.x < -1.5f)
+                GetComponent<Renderer>().material.color = Color.Lerp(GetComponent<Renderer>().material.color, col, Time.deltaTime);
+                transform.position -= new Vector3(0.03f + n, 0, 0);
+            
+            if (transform.position.x < -8.5f)
+                mCube.GetComponent<GameCntrl>().playerLose();
+        }
+
+        if (mCube.GetComponent<RandNum>().Num != lastNum)
+        {
+            lastNum = mCube.GetComponent<RandNum>().Num;
+            transform.position = new Vector3(0, transform.position.y, 0);
+            GetComponent<Renderer>().material.color = defCol;
+        }
+    }
+
+    private void OnDestroy()
+    {
+        if (mCube)
+            mCube.GetComponent<GameCntrl>().lose = true;
+    }
+}
+*[MaxScore.cs]-------------------------------------------------------------------------------------------------------------------------*
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.UI;
+
+public class MaxScore : MonoBehaviour
+{
+
+    private void Start ()
+    {
+        GetComponent<Text>().text = "Max Score" + "\n" + PlayerPrefs.GetInt("Score").ToString();
+	}
+
+}
+*[Buttons.cs]--------------------------------------------------------------------------------------------------------------------------*
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class Buttons : MonoBehaviour
+{
+    public Sprite layer_blue, layer_red;
+    void OnMouseDown()
+    {
+        GetComponent<SpriteRenderer>().sprite = layer_red;
+    }
+    private void OnMouseUp()
+    {
+        GetComponent<SpriteRenderer>().sprite = layer_blue;
+    }
+
+    void OnMouseUpAsButton ()
+    {
+        switch (gameObject.name)
+        {
+            case "Play":
+                Application.LoadLevel("play");
+                break;
+            case "Replay":
+                Application.LoadLevel("play");
+                break;
+            case "Home":
+                Application.LoadLevel("main");
+                break;
+            case "Close":
+                Application.LoadLevel("main");
+                break;
+            case "How":
+                Application.LoadLevel("how");
+                break;
+
+        }
+    }
+
+}
+*[Cubefloat.cs]------------------------------------------------------------------------------------------------------------------------*
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class Cubefloat : MonoBehaviour {
+
+    public float speed, tilt;
+    private Vector3 target = new Vector3 (0, 1.4f, 0);
+    private void Start()
+    {
+        Screen.SetResolution(720, 1280, false);
+    }
+    private void Update ()
+    {
+        transform.position = Vector3.MoveTowards(transform.position, target, Time.deltaTime * speed);
+        if (transform.position == target && target.y != -0.57f)
+            target.y = -0.57f;
+        else if (transform.position == target && target.y == -0.57f)
+            target.y = 1.4f;
+
+        transform.Rotate(Vector3.up * tilt);
+    }
+}
